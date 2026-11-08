@@ -1,0 +1,2249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Prayer Clock</title>
+    <meta name="description" content="A beautiful home prayer clock with live prayer times, Hijri and Gregorian dates, Adhan and daily Hadith.">
+    <meta property="og:title" content="Prayer Times Wall Clock">
+    <meta property="og:description" content="A prayer times wall clock with hadith display and administrative settings.">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#063b2d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
+    <link rel="icon" type="image/svg+xml" href="assets/icon-192.svg">
+    <link rel="icon" type="image/png" href="assets/icon-192.png">
+    <!-- Google Analytics (Safe conditional load for kiosk/offline) -->
+    <script>
+      if (navigator.onLine && window.location.protocol.indexOf('http') === 0 && !window.location.origin.includes('appassets')) {
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = "https://www.googletagmanager.com/gtag/js?id=G-NPJPD5P5LX";
+        document.head.appendChild(s);
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-NPJPD5P5LX');
+      }
+    </script>
+</head>
+<body class="theme-emerald-gold">
+    <div class="clock-container">
+        <!-- Tablet-first header: time, next prayer, both calendars, and location -->
+        <header class="top-bar" aria-label="Prayer clock information">
+            <div class="clock-block">
+                <div class="current-time" id="current-time" aria-live="off">--:--:--</div>
+                <div class="next-prayer" id="next-prayer">Next Prayer: Calculating...</div>
+            </div>
+            <div class="date-info" aria-label="Gregorian and Hijri dates">
+                <span class="date-label">TODAY</span>
+                <span id="gregorian-date"></span>
+                <span class="date-divider" aria-hidden="true">•</span>
+                <span id="islamic-date"></span>
+            </div>
+            <div id="location" aria-label="Display location">
+                <span class="location-label">LOCATION</span>
+                <span id="current-city">Mumbai</span>
+                <button id="open-settings-btn" class="settings-btn" type="button" title="Open Settings" aria-label="Settings">⚙️</button>
+            </div>
+        </header>
+
+        <!-- Prayer Times Grid -->
+        <div id="prayer-grid" class="prayer-grid layout-default">
+            <div class="prayer-box" id="fajr-box">
+                <div class="prayer-name">FAJR</div>
+                <div class="prayer-time" id="fajr-jamaat">05:28 AM</div>
+                <div class="prayer-details">
+                    <div>SEHRI END <span id="fajr-begins">05:28 AM</span></div>
+                    <div>SUBAH SADIQ <span id="fajr-additional">05:20 AM</span></div>
+                </div>
+            </div>
+            <div class="prayer-box" id="dhuhr-box">
+                <div class="prayer-name">ZOHR</div>
+                <div class="prayer-time" id="dhuhr-jamaat">12:29 PM</div>
+                <div class="prayer-details">
+                    <div>CHASHT <span id="dhuhr-additional">06:44 AM</span></div>
+                    <div>AWWAL <span id="dhuhr-begins">12:29 PM</span></div>
+                </div>
+            </div>
+            <div class="prayer-box" id="asr-box">
+                <div class="prayer-name">ASR</div>
+                <div class="prayer-time" id="asr-jamaat">04:38 PM</div>
+                <div class="prayer-details">
+                    <div>HANFI AWWAL <span id="asr-begins">04:38 PM</span></div>
+                    <div>SHAFI AWWAL <span id="asr-additional">06:05 PM</span></div>
+                </div>
+            </div>
+            <div class="prayer-box" id="maghrib-box">
+                <div class="prayer-name">MAGHRIB</div>
+                <div class="prayer-time" id="maghrib-jamaat">06:04 PM</div>
+                <div class="prayer-details">
+                    <div>SUNSET <span id="maghrib-additional">06:05 PM</span></div>
+                    <div>IFTAAR <span id="maghrib-begins">06:04 PM</span></div>
+                </div>
+            </div>
+            <div class="prayer-box" id="isha-box">
+                <div class="prayer-name">ISHA</div>
+                <div class="prayer-time" id="isha-jamaat">07:27 PM</div>
+                <div class="prayer-details">
+                    <div>AWWAL <span id="isha-begins">07:27 PM</span></div>
+                    <div>QAZA <span id="isha-qaza">09:43 PM</span></div>
+                </div>
+            </div>
+            <!-- Hadith Box -->
+            <div class="hadith-box" id="hadith-box">
+                <div class="hadith-title" id="hadith-title">HADITH</div>
+                <div class="hadith-content" id="hadith-english">The best among you are those who have the best manners and character.</div>
+                <div class="hadith-source" id="hadith-source">Sahih al-Bukhari 6035</div>
+            </div>
+        </div>
+    </div>
+    <div id="interaction-popup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 5px; z-index: 1000;">
+        <p>Please click anywhere on the page to enable audio</p>
+    </div>
+
+    <!-- Active Alarm Notification Floating Banner -->
+    <div id="alarm-alert-banner" class="alarm-alert-banner" style="display: none;">
+        <span class="alarm-banner-icon">⏰</span>
+        <div>
+            <div id="alarm-banner-title" style="font-size: 1.15rem; font-weight: 800; text-transform: uppercase;">ALARM RINGING</div>
+            <div id="alarm-banner-subtitle" style="font-size: 0.85rem; opacity: 0.95;">Scheduled Reminder Alert</div>
+        </div>
+        <button type="button" id="btn-dismiss-alarm" class="btn-dismiss-alarm" onclick="window.__dismissActiveAlarm()">✕ Dismiss Alarm</button>
+    </div>
+
+    <!-- In-App Dynamic Settings Modal (Single Page Application, TV-ready, High-Contrast) -->
+    <!-- Complete In-App Admin Settings Modal (Pixel-Perfect match to image_c1abb5c6.png, Zero Navigation Required) -->
+    <div id="settings-modal" class="settings-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="settings-modal-card">
+            <!-- Green Top Bar matching image_c1abb5c6.png -->
+            <div class="settings-modal-header">
+                <div class="settings-modal-title" id="settings-title">Prayer Time Settings</div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="settings-online-badge"><span class="settings-online-dot"></span> Online</span>
+                    <button type="button" class="settings-modal-close" id="close-settings-btn" title="Return to Clock Display">← Return to Clock</button>
+                </div>
+            </div>
+
+            <!-- Tab Navigation Bar matching image_c1abb5c6.png -->
+            <div class="settings-tabs">
+                <button type="button" class="settings-tab-btn active" data-tab="tab-general">⚙️ General</button>
+                <button type="button" class="settings-tab-btn" data-tab="tab-alarm">⏰ Alarm</button>
+                <button type="button" class="settings-tab-btn" data-tab="tab-theme-layout">🎨 Theme & Layout</button>
+                <button type="button" class="settings-tab-btn" data-tab="tab-audio">📢 Azan & Audio</button>
+                <button type="button" class="settings-tab-btn" data-tab="tab-remote">🌐 Remote Access</button>
+            </div>
+
+            <div class="settings-modal-body">
+                <!-- ========================================== -->
+                <!-- TAB 1: GENERAL (Location & Calculations)  -->
+                <!-- ========================================== -->
+                <div id="tab-general" class="settings-tab-content active">
+                    <!-- Location Settings Card -->
+                    <div class="settings-card-box">
+                        <div class="settings-section-title">📍 Location Settings</div>
+                        <div class="settings-row">
+                            <div class="settings-form-group">
+                                <label class="settings-label" for="setting-city">City</label>
+                                <input type="text" id="setting-city" class="settings-input" placeholder="e.g. Mumbai" value="Mumbai">
+                            </div>
+                            <div class="settings-form-group">
+                                <label class="settings-label" for="setting-state">State (Optional)</label>
+                                <input type="text" id="setting-state" class="settings-input" placeholder="e.g. Maharashtra">
+                            </div>
+                            <div class="settings-form-group">
+                                <label class="settings-label" for="setting-country">Country</label>
+                                <input type="text" id="setting-country" class="settings-input" placeholder="e.g. India" value="India">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Prayer Calculation Rules Card -->
+                    <div class="settings-card-box">
+                        <div class="settings-section-title">🧮 Prayer Calculation Rules</div>
+                        <div class="settings-form-group">
+                            <label class="settings-label" for="setting-calc-method">Calculation Method</label>
+                            <select id="setting-calc-method" class="settings-select">
+                                <option value="0">Jafari / Shia Ithna-Ashari</option>
+                                <option value="1">University of Islamic Sciences, Karachi</option>
+                                <option value="2" selected>Islamic Society of North America (ISNA)</option>
+                                <option value="3">Muslim World League (MWL)</option>
+                                <option value="4">Umm Al-Qura University, Makkah</option>
+                                <option value="5">Egyptian General Authority of Survey</option>
+                                <option value="7">Institute of Geophysics, University of Tehran</option>
+                                <option value="8">Gulf Region</option>
+                                <option value="9">Kuwait</option>
+                                <option value="10">Qatar</option>
+                                <option value="11">Majlis Ugama Islam Singapura, Singapore</option>
+                                <option value="12">Union Organization islamic de France</option>
+                                <option value="13">Diyanet İşleri Başkanlığı, Turkey</option>
+                                <option value="14">Spiritual Administration of Muslims of Russia</option>
+                                <option value="15">Moonsighting Committee Worldwide</option>
+                                <option value="17">Jabatan Kemajuan Islam Malaysia (JAKIM)</option>
+                                <option value="20">KEMENAG - Kementerian Agama Republik Indonesia</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-row">
+                            <div class="settings-form-group">
+                                <label class="settings-label">Asr Jurisprudential School</label>
+                                <div class="asr-button-group">
+                                    <button type="button" id="btn-asr-hanafi" class="asr-toggle-btn active">Hanafi (Standard Subcontinent)</button>
+                                    <button type="button" id="btn-asr-shafi" class="asr-toggle-btn">Shafi (Standard)</button>
+                                </div>
+                            </div>
+
+                            <div class="settings-form-group">
+                                <label class="settings-label" for="setting-hijri-adj">Hijri Date Adjustment (Moon Sighting)</label>
+                                <select id="setting-hijri-adj" class="settings-select">
+                                    <option value="-2">-2 Days</option>
+                                    <option value="-1">-1 Day</option>
+                                    <option value="0" selected>0 Days (Astronomical Calculation)</option>
+                                    <option value="1">+1 Day (Common India/Pakistan sighting)</option>
+                                    <option value="2">+2 Days</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- TAB 2: ALARM & REMINDERS                   -->
+                <!-- ========================================== -->
+                <div id="tab-alarm" class="settings-tab-content">
+                    <!-- Custom Audio Upload Box -->
+                    <div class="audio-upload-container">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <div>
+                                <div style="font-weight: 800; font-size: 0.95rem; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+                                    <span>🎵</span> Custom MP3 Audio Upload
+                                </div>
+                                <div style="font-size: 0.82rem; color: #64748b;">Upload your own MP3 reminder tones, ruqya, or notification chimes</div>
+                            </div>
+                            <div>
+                                <input type="file" id="modal-audio-file-input" accept="audio/mp3,audio/*" style="display: none;">
+                                <button type="button" id="btn-modal-upload-audio" class="btn-primary" style="padding: 8px 16px; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
+                                    <span>📁</span> Upload MP3 File
+                                </button>
+                            </div>
+                        </div>
+                        <div id="modal-upload-status" style="display: none; margin-top: 10px; font-size: 0.85rem; font-weight: 600; padding: 6px 12px; border-radius: 6px;"></div>
+                    </div>
+
+                    <!-- Scheduled Alarms & Reminders List -->
+                    <div class="settings-card-box">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 8px;">
+                            <div>
+                                <div class="settings-section-title" style="margin-bottom: 2px; padding-bottom: 0; border-bottom: none;">⏰ Scheduled Alarms & Audio Alerts</div>
+                                <div style="font-size: 0.82rem; color: #64748b;">Supports One-time, Daily, Weekly (select days), and Monthly schedules</div>
+                            </div>
+                            <button type="button" id="btn-add-reminder" class="btn-primary" style="padding: 7px 14px; font-size: 0.88rem;">➕ Add New Alarm</button>
+                        </div>
+                        <div id="reminders-container-modal">
+                            <!-- Injected dynamically with full recurrence controls -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================================== -->
+                <!-- TAB 3: THEME & LAYOUT (EXACT MATCH TO image_c1abb5c6.png)  -->
+                <!-- ========================================================== -->
+                <div id="tab-theme-layout" class="settings-tab-content">
+                    <!-- Theme Selection Section -->
+                    <div class="settings-card-box">
+                        <div class="settings-section-title">Theme Selection</div>
+                        <div class="admin-theme-grid">
+                            <!-- Theme 1: Default (Forest Green) -->
+                            <div class="theme-card-item active" data-theme="default">
+                                <div class="theme-preview-box preview-theme-default"></div>
+                                <div class="theme-card-label">Default</div>
+                            </div>
+                            <!-- Theme 2: Blue -->
+                            <div class="theme-card-item" data-theme="blue">
+                                <div class="theme-preview-box preview-theme-blue"></div>
+                                <div class="theme-card-label">Blue</div>
+                            </div>
+                            <!-- Theme 3: Dark -->
+                            <div class="theme-card-item" data-theme="dark">
+                                <div class="theme-preview-box preview-theme-dark"></div>
+                                <div class="theme-card-label">Dark</div>
+                            </div>
+                            <!-- Theme 4: Light (High Contrast Guaranteed Visible) -->
+                            <div class="theme-card-item" data-theme="light">
+                                <div class="theme-preview-box preview-theme-light"></div>
+                                <div class="theme-card-label">Light</div>
+                            </div>
+                            <!-- Theme 5: Emerald & Gold -->
+                            <div class="theme-card-item" data-theme="emerald-gold">
+                                <div class="theme-preview-box preview-theme-emerald-gold"></div>
+                                <div class="theme-card-label">Emerald Gold</div>
+                            </div>
+                            <!-- Theme 6: Ruby -->
+                            <div class="theme-card-item" data-theme="ruby">
+                                <div class="theme-preview-box preview-theme-ruby"></div>
+                                <div class="theme-card-label">Ruby</div>
+                            </div>
+                            <!-- Theme 7: Amber -->
+                            <div class="theme-card-item" data-theme="amber">
+                                <div class="theme-preview-box preview-theme-amber"></div>
+                                <div class="theme-card-label">Amber</div>
+                            </div>
+                            <!-- Theme 8: Purple -->
+                            <div class="theme-card-item" data-theme="purple">
+                                <div class="theme-preview-box preview-theme-purple"></div>
+                                <div class="theme-card-label">Purple</div>
+                            </div>
+                            <!-- Theme 9: High Contrast -->
+                            <div class="theme-card-item" data-theme="highcontrast">
+                                <div class="theme-preview-box preview-theme-highcontrast"></div>
+                                <div class="theme-card-label">High Contrast</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Layout Selection Section -->
+                    <div class="settings-card-box">
+                        <div class="settings-section-title">Layout Selection</div>
+                        <div class="admin-layout-grid">
+                            <!-- Layout 1: Default (2x3 Classic Wall Board) -->
+                            <div class="layout-card-item active" data-layout="default">
+                                <div class="layout-preview-box">
+                                    <div class="wireframe-default">
+                                        <div></div><div></div><div></div><div></div><div></div><div></div>
+                                    </div>
+                                </div>
+                                <div class="layout-card-label">Default</div>
+                            </div>
+                            <!-- Layout 2: Compact (3x2 Dense Board) -->
+                            <div class="layout-card-item" data-layout="compact">
+                                <div class="layout-preview-box">
+                                    <div class="wireframe-compact">
+                                        <div></div><div></div><div></div><div></div><div></div><div></div>
+                                    </div>
+                                </div>
+                                <div class="layout-card-label">Compact</div>
+                            </div>
+                            <!-- Layout 3: Modern (Hero Banner + Cards) -->
+                            <div class="layout-card-item" data-layout="modern">
+                                <div class="layout-preview-box">
+                                    <div class="wireframe-modern">
+                                        <div class="wf-top"></div>
+                                        <div class="wf-row"><div></div><div></div><div></div></div>
+                                    </div>
+                                </div>
+                                <div class="layout-card-label">Modern</div>
+                            </div>
+                            <!-- Layout 4: Horizontal Strip (1x6 Single Row) -->
+                            <div class="layout-card-item" data-layout="horizontal">
+                                <div class="layout-preview-box">
+                                    <div class="wireframe-horizontal">
+                                        <div></div><div></div><div></div><div></div><div></div><div></div>
+                                    </div>
+                                </div>
+                                <div class="layout-card-label">Horizontal</div>
+                            </div>
+                            <!-- Layout 5: Vertical Pillar (Portrait Totem) -->
+                            <div class="layout-card-item" data-layout="vertical">
+                                <div class="layout-preview-box">
+                                    <div class="wireframe-vertical">
+                                        <div></div><div></div><div></div><div></div><div></div><div></div>
+                                    </div>
+                                </div>
+                                <div class="layout-card-label">Vertical</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: center; margin-top: 14px;">
+                            <button type="button" onclick="var b=document.querySelector('.settings-modal-body');if(b)b.scrollTop=0;" style="background: #f1f5f9; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 18px; font-size: 0.88rem; font-weight: 700; color: #334155; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                                <span>↑</span> Back to Top / Tabs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- TAB 4: AZAN & AUDIO CONTROLS               -->
+                <!-- ========================================== -->
+                <div id="tab-audio" class="settings-tab-content">
+                    <div class="settings-card-box">
+                        <div class="settings-section-title">📢 Automatic Azan Audio</div>
+                        
+                        <!-- Master Switch -->
+                        <div class="audio-toggle-switch-card">
+                            <div>
+                                <div style="font-weight: 800; font-size: 0.95rem; color: #1e293b;">Enable Automatic Azan</div>
+                                <div style="font-size: 0.82rem; color: #64748b;">Plays uploaded Azan MP3 track automatically when prayer countdown reaches zero</div>
+                            </div>
+                            <button type="button" id="btn-toggle-azan" class="btn-primary" style="padding: 8px 18px; font-size: 0.9rem;">🔊 Azan: ON</button>
+                        </div>
+
+                        <!-- Volume Slider -->
+                        <div class="volume-slider-card">
+                            <span style="font-size: 0.88rem; font-weight: 800; color: #334155; min-width: 90px;">Volume: <span id="volume-label">100%</span></span>
+                            <input type="range" id="setting-azan-volume" class="volume-slider" min="0" max="100" value="100">
+                        </div>
+
+                        <!-- Direct Audio Test Buttons -->
+                        <div style="margin-top: 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <label class="settings-label" style="margin-bottom: 0;">🎧 Test Sound Tracks & Azan Audio</label>
+                                <span id="audio-playback-status" class="audio-status-pill">● Audio System Ready</span>
+                            </div>
+                            <div class="audio-grid-buttons-admin">
+                                <button type="button" class="audio-test-btn-admin" id="btn-play-fajr" data-track="azan/fajr.mp3" data-name="Fajr Azan">🕌 Fajr Azan</button>
+                                <button type="button" class="audio-test-btn-admin" id="btn-play-dhuhr" data-track="azan/dhuhr.mp3" data-name="Zohr Azan">🕌 Zohr Azan</button>
+                                <button type="button" class="audio-test-btn-admin" id="btn-play-asr" data-track="azan/asr.mp3" data-name="Asr Azan">🕌 Asr Azan</button>
+                                <button type="button" class="audio-test-btn-admin" id="btn-play-maghrib" data-track="azan/maghrib.mp3" data-name="Maghrib Azan">🕌 Maghrib Azan</button>
+                                <button type="button" class="audio-test-btn-admin" id="btn-play-isha" data-track="azan/isha.mp3" data-name="Isha Azan">🕌 Isha Azan</button>
+                                <button type="button" class="audio-test-btn-admin" id="btn-play-hourly" data-track="azan/Alhamd.mp3" data-name="Hourly Chime">🔔 Hourly Chime</button>
+                                <button type="button" class="audio-test-btn-admin" id="btn-play-makruh" data-track="azan/buzzer.mp3" data-name="Makruh Buzzer">⚠️ Makruh Buzzer</button>
+                                <button type="button" class="audio-test-btn-admin audio-stop-btn-admin" id="btn-stop-audio">⏹️ Stop Audio</button>
+                            </div>
+                        </div>
+
+                        <!-- Directory Guide -->
+                        <div class="audio-guide-card-admin">
+                            <div style="font-weight: 800; color: #065f46; font-size: 0.9rem; margin-bottom: 6px;">
+                                📁 Project Upload Folder: <code>azan/</code>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #334155; line-height: 1.5;">
+                                Upload custom audio directly to <code>azan/</code> in the project root:
+                                <ul style="margin: 6px 0 0 16px; padding: 0;">
+                                    <li><code>fajr.mp3</code>, <code>dhuhr.mp3</code>, <code>asr.mp3</code>, <code>maghrib.mp3</code>, <code>isha.mp3</code></li>
+                                    <li><code>Alhamd.mp3</code> (Hourly chime), <code>buzzer.mp3</code> (Makruh warning)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- TAB 5: REMOTE NETWORK ACCESS               -->
+                <!-- ========================================== -->
+                <div id="tab-remote" class="settings-tab-content">
+                    <div class="settings-card-box">
+                        <div class="settings-section-title" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                            <span>📶 Same Wi-Fi Network Remote Administration</span>
+                            <span style="font-size: 0.78rem; font-weight: 700; background: #e0f2fe; color: #0284c7; padding: 3px 10px; border-radius: 999px;">Local Network Only</span>
+                        </div>
+                        <div style="font-size: 0.88rem; color: #475569; margin-bottom: 16px; line-height: 1.5;">
+                            Control and update this Prayer Clock display from your smartphone, tablet, or PC on the <strong>same Wi-Fi network</strong> without needing to touch this screen.
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                            <div style="background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 18px;">
+                                <div style="font-size: 0.78rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 6px;">Wi-Fi Admin Web URL</div>
+                                <div id="display-remote-url" style="font-family: monospace; font-size: 1.1rem; font-weight: 800; color: #047857; word-break: break-all; margin-bottom: 12px; background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                    http://.../admin.html
+                                </div>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <button type="button" id="btn-copy-remote-url" onclick="window.copyRemoteUrlToClipboard()" class="btn-primary" style="padding: 8px 14px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+                                        📋 Copy Wi-Fi URL
+                                    </button>
+                                    <a id="btn-open-remote-admin" href="admin.html" target="_blank" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 0.85rem; text-decoration: none; background: #0284c7; border-color: #0284c7;">
+                                        <span>↗</span> Open Remote Admin
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 18px;">
+                                <div style="font-size: 0.78rem; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 6px;">Security PIN Authentication</div>
+                                <div style="font-size: 0.95rem; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
+                                    Admin PIN: <span id="current-pin-badge" style="background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 6px; font-family: monospace; font-size: 1.1rem; font-weight: 800;">1234</span>
+                                </div>
+                                <div style="font-size: 0.82rem; color: #475569; margin-bottom: 10px;">
+                                    Prevents unauthorized access from others on your Wi-Fi.
+                                </div>
+                                <div class="settings-form-group" style="margin-bottom: 0;">
+                                    <label class="settings-label" for="setting-admin-pin" style="margin-bottom: 4px;">Change Admin PIN</label>
+                                    <input type="text" id="setting-admin-pin" class="settings-input" style="width: 140px; font-weight: 800; letter-spacing: 2px; text-align: center;" value="1234" maxlength="8">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3-Step Quick Setup Guide for Phones -->
+                        <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 10px; padding: 14px 18px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+                            <div style="font-size: 1.8rem;">📱</div>
+                            <div style="flex: 1; font-size: 0.85rem; color: #78350f; line-height: 1.5;">
+                                <strong>How to use from your Phone:</strong><br>
+                                1. Ensure phone is connected to the <strong>same Wi-Fi router</strong>.<br>
+                                2. Open Chrome or Safari and type the Wi-Fi URL above.<br>
+                                3. Enter PIN (<strong>1234</strong>) to adjust city, themes, layouts, alarms & tones live without touching this screen!
+                            </div>
+                            <div style="text-align: center; background: #ffffff; padding: 6px; border-radius: 8px; border: 1px solid #fed7aa;">
+                                <img id="remote-qr-code-img" src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=http://localhost:3000/admin.html" alt="Scan QR to open Admin" style="width: 100px; height: 100px; display: block; border-radius: 4px;" onerror="this.style.display='none'">
+                                <div style="font-size: 0.68rem; color: #9a3412; font-weight: 700; margin-top: 3px;">Scan with Phone</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sticky Bottom Save Bar matching image_c1abb5c6.png -->
+            <div class="settings-modal-footer">
+                <span id="settings-save-status" class="settings-status-msg">✓ Settings saved & applied!</span>
+                <button type="button" class="btn-cancel-settings" id="cancel-settings-btn">Cancel</button>
+                <button type="button" class="btn-save-all-settings" id="save-settings-btn">
+                    <span>💾</span> Save All Settings
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pure ES5 Universal Kiosk Engine (Runs 100% reliably on Android 4.4 - 14, Smart TVs, WebViews) -->
+    <script>
+    (function() {
+        window.__kioskEngineActive = true;
+        if (!String.prototype.padStart) {
+            String.prototype.padStart = function(targetLength, padString) {
+                targetLength = targetLength >> 0;
+                padString = String(typeof padString !== 'undefined' ? padString : ' ');
+                if (this.length >= targetLength) return String(this);
+                targetLength = targetLength - this.length;
+                if (targetLength > padString.length) {
+                    padString += padString.repeat(targetLength / padString.length);
+                }
+                return padString.slice(0, targetLength) + String(this);
+            };
+        }
+
+        var defaultTimings = {
+            Fajr: "05:28",
+            Sunrise: "06:44",
+            Dhuhr: "12:29",
+            Asr: "16:38",
+            Sunset: "18:04",
+            Maghrib: "18:04",
+            Isha: "19:27",
+            Imsak: "05:20"
+        };
+
+        var curTimings = defaultTimings;
+
+        function timeToSeconds(timeStr) {
+            if (!timeStr || typeof timeStr !== 'string') return -1;
+            var clean = timeStr.split(' ')[0];
+            var parts = clean.split(':');
+            if (parts.length < 2) return -1;
+            var h = parseInt(parts[0], 10);
+            var m = parseInt(parts[1], 10);
+            if (isNaN(h) || isNaN(m)) return -1;
+            return h * 3600 + m * 60;
+        }
+
+        function secondsToHHMM(seconds) {
+            if (seconds < 0) return '00:00:00';
+            var h = Math.floor(seconds / 3600);
+            var m = Math.floor((seconds % 3600) / 60);
+            var s = Math.floor(seconds % 60);
+            return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+        }
+
+        function format12Hour(timeStr) {
+            if (!timeStr) return '';
+            var clean = timeStr.split(' ')[0];
+            var p = clean.split(':');
+            if (p.length < 2) return timeStr;
+            var h = parseInt(p[0], 10);
+            var m = p[1];
+            if (isNaN(h)) return timeStr;
+            var ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12;
+            if (!h) h = 12;
+            return (h < 10 ? '0' : '') + h + ':' + m + ' ' + ampm;
+        }
+
+        function calculateQaza(ishaTime) {
+            var ishaSec = timeToSeconds(ishaTime);
+            if (ishaSec === -1) return '09:43 PM';
+            var midnight = 24 * 3600;
+            var qazaSec = Math.floor((ishaSec + midnight) / 2);
+            var h = Math.floor(qazaSec / 3600);
+            var m = Math.floor((qazaSec % 3600) / 60);
+            var ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12;
+            if (!h) h = 12;
+            return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
+        }
+
+        // Offline Astronomical Hijri English Date Calculator (English text & fonts)
+        function getHijriEnglishDate(adjustment) {
+            var adj = 0;
+            try {
+                if (typeof adjustment !== 'undefined' && adjustment !== null) {
+                    adj = parseInt(adjustment, 10);
+                } else {
+                    var s = localStorage.getItem('settings');
+                    if (s) {
+                        var parsed = JSON.parse(s);
+                        if (parsed && typeof parsed.adjustment !== 'undefined') adj = parseInt(parsed.adjustment, 10);
+                    }
+                }
+            } catch (e) {}
+
+            var date = new Date();
+            date.setDate(date.getDate() + adj);
+            var day = date.getDate(), month = date.getMonth(), year = date.getFullYear();
+            var m = month + 1, y = year;
+            if (m < 3) { y -= 1; m += 12; }
+            var a = Math.floor(y / 100);
+            var b = 2 - a + Math.floor(a / 4);
+            if (y < 1583) b = 0;
+            var jd = Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + day + b - 1524;
+            var epochastro = 1948084;
+            var z = jd - epochastro;
+            var cyc = Math.floor(z / 10631.0);
+            z = z - 10631 * cyc;
+            var j = Math.floor((z - 8.01 / 60.0) / (10631.0 / 30.0));
+            var iy = 30 * cyc + j;
+            z = z - Math.floor(j * (10631.0 / 30.0) + (8.01 / 60.0));
+            var im = Math.floor((z + 28.5001) / 29.5);
+            if (im === 13) im = 12;
+            var id = Math.floor(z - Math.floor(29.5001 * im - 29));
+            var islamicMonthsEnglish = [
+                "Muharram", "Safar", "Rabi' al-Awwal", "Rabi' al-Thani",
+                "Jumada al-Ula", "Jumada al-Thani", "Rajab", "Sha'ban",
+                "Ramadan", "Shawwal", "Dhu al-Qi'dah", "Dhu al-Hijjah"
+            ];
+            var idx = Math.max(0, Math.min(11, im - 1));
+            return id + " " + islamicMonthsEnglish[idx] + " " + iy + " AH";
+        }
+        var getHijriUrduDate = getHijriEnglishDate;
+
+        var curatedHadiths = [
+            {
+                text: "The best among you are those who have the best manners and character.",
+                source: "Sahih al-Bukhari 6035"
+            },
+            {
+                text: "The most beloved deeds to Allah are those done regularly, even if small.",
+                source: "Sahih al-Bukhari 6464"
+            },
+            {
+                text: "Whoever prays the dawn (Fajr) and afternoon (Asr) prayers will enter Paradise.",
+                source: "Sahih al-Bukhari 574"
+            },
+            {
+                text: "A Muslim is the one from whose tongue and hands other Muslims are safe.",
+                source: "Sahih al-Bukhari 10"
+            },
+            {
+                text: "Cleanliness is half of faith, and Alhamdulillah fills the scale.",
+                source: "Sahih Muslim 223"
+            }
+        ];
+
+        function applyTimingsToUI(t) {
+            if (!t) return;
+            var setElem = function(id, val) {
+                var el = document.getElementById(id);
+                if (el && val) el.textContent = val;
+            };
+            setElem('fajr-jamaat', format12Hour(t.Fajr));
+            setElem('fajr-begins', format12Hour(t.Fajr));
+            setElem('fajr-additional', format12Hour(t.Imsak || t.Fajr));
+
+            setElem('dhuhr-jamaat', format12Hour(t.Dhuhr));
+            setElem('dhuhr-begins', format12Hour(t.Dhuhr));
+            setElem('dhuhr-additional', format12Hour(t.Sunrise));
+
+            setElem('asr-jamaat', format12Hour(t.Asr));
+            setElem('asr-begins', format12Hour(t.Asr));
+            setElem('asr-additional', format12Hour(t.Sunset));
+
+            setElem('maghrib-jamaat', format12Hour(t.Maghrib));
+            setElem('maghrib-begins', format12Hour(t.Maghrib));
+            setElem('maghrib-additional', format12Hour(t.Sunset));
+
+            setElem('isha-jamaat', format12Hour(t.Isha));
+            setElem('isha-begins', format12Hour(t.Isha));
+            setElem('isha-qaza', calculateQaza(t.Isha));
+        }
+
+        // Supported Themes & Layouts
+        var ALL_THEMES = ['default', 'blue', 'dark', 'light', 'emerald-gold', 'ruby', 'amber', 'purple', 'highcontrast'];
+        var ALL_LAYOUTS = ['default', 'compact', 'modern', 'horizontal', 'vertical'];
+
+        function applyThemeToDOM(thm) {
+            if (!thm) thm = 'default';
+            for (var i = 0; i < ALL_THEMES.length; i++) {
+                document.body.classList.remove('theme-' + ALL_THEMES[i]);
+            }
+            if (thm !== 'default') {
+                document.body.classList.add('theme-' + thm);
+            }
+            // Update active state in settings modal if open
+            try {
+                var themeOptions = document.querySelectorAll('.theme-option');
+                for (var j = 0; j < themeOptions.length; j++) {
+                    if (themeOptions[j].getAttribute('data-theme') === thm) {
+                        themeOptions[j].classList.add('selected');
+                    } else {
+                        themeOptions[j].classList.remove('selected');
+                    }
+                }
+            } catch (e) {}
+        }
+
+        function applyLayoutToDOM(lay) {
+            if (!lay) lay = 'default';
+            var grid = document.getElementById('prayer-grid') || document.querySelector('.prayer-grid');
+            if (!grid) return;
+            for (var i = 0; i < ALL_LAYOUTS.length; i++) {
+                grid.classList.remove('layout-' + ALL_LAYOUTS[i]);
+            }
+            grid.classList.add('layout-' + lay);
+            // Update active state in settings modal if open
+            try {
+                var layoutOptions = document.querySelectorAll('.layout-option');
+                for (var k = 0; k < layoutOptions.length; k++) {
+                    if (layoutOptions[k].getAttribute('data-layout') === lay) {
+                        layoutOptions[k].classList.add('selected');
+                    } else {
+                        layoutOptions[k].classList.remove('selected');
+                    }
+                }
+            } catch (e) {}
+        }
+
+        // Live Apply Remote Settings from Wi-Fi Phone/Companion App
+        function applyRemoteSettings(remoteObj) {
+            if (!remoteObj || typeof remoteObj !== 'object') return;
+            console.log('[Remote Sync] Instantly applying remote settings to DOM:', remoteObj);
+
+            // 1. Theme
+            if (remoteObj.theme) {
+                applyThemeToDOM(remoteObj.theme);
+                localStorage.setItem('selectedTheme', remoteObj.theme);
+            }
+
+            // 2. Layout
+            if (remoteObj.layout) {
+                applyLayoutToDOM(remoteObj.layout);
+                localStorage.setItem('selectedLayout', remoteObj.layout);
+            }
+
+            // 3. City & Country
+            if (remoteObj.city) {
+                var cityEl = document.getElementById('current-city');
+                if (cityEl) cityEl.textContent = remoteObj.city;
+            }
+
+            // 4. Hijri Adjustment
+            if (typeof remoteObj.adjustment !== 'undefined') {
+                var iEl = document.getElementById('islamic-date');
+                if (iEl && typeof getHijriEnglishDate === 'function') {
+                    iEl.textContent = getHijriEnglishDate(remoteObj.adjustment);
+                }
+            }
+
+            // 5. Azan Audio Enabled / Volume
+            if (typeof remoteObj.azanAudioEnabled !== 'undefined') {
+                currentAzanEnabled = (remoteObj.azanAudioEnabled !== false);
+                if (typeof updateAzanToggleUI === 'function') updateAzanToggleUI();
+            }
+            if (typeof remoteObj.azanVolume !== 'undefined') {
+                currentAzanVolume = parseInt(remoteObj.azanVolume, 10);
+                if (window.AndroidAudio && typeof window.AndroidAudio.setVolume === 'function') {
+                    try {
+                        window.AndroidAudio.setVolume(currentAzanVolume / 100.0);
+                    } catch (e) {}
+                }
+            }
+
+            // 6. Alarms / Reminders
+            var alarmsList = remoteObj.alarms || remoteObj.reminders;
+            if (Array.isArray(alarmsList) && typeof syncNativeAndroidAlarms === 'function') {
+                syncNativeAndroidAlarms(alarmsList);
+            }
+
+            // 7. Store in localStorage
+            try {
+                localStorage.setItem('settings', JSON.stringify(remoteObj));
+            } catch (e) {}
+        }
+
+        // Attach globally so native Java WebView and outside scripts can call them immediately
+        window.applyThemeToDOM = applyThemeToDOM;
+        window.applyLayoutToDOM = applyLayoutToDOM;
+        window.applyRemoteSettings = applyRemoteSettings;
+
+        // Shared Universal Kiosk Audio Player & Audio State
+        var kioskAudio = new Audio();
+        kioskAudio.preload = 'auto';
+        var currentActivePlayBtn = null;
+        var currentAzanEnabled = true;
+        var currentAzanVolume = 100;
+        var playedAzansToday = { Fajr: false, Dhuhr: false, Asr: false, Maghrib: false, Isha: false };
+        var lastMakruhState = false;
+        var lastChimeHour = -1;
+
+        // Auto unlock audio on any user interaction (Kiosk & Web Preview)
+        function unlockKioskAudio() {
+            try {
+                if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
+                    var AC = window.AudioContext || window.webkitAudioContext;
+                    if (!window.__globalAudioCtx) window.__globalAudioCtx = new AC();
+                    if (window.__globalAudioCtx.state === 'suspended') window.__globalAudioCtx.resume();
+                }
+            } catch (e) {}
+            try {
+                kioskAudio.muted = true;
+                kioskAudio.play().then(function() {
+                    kioskAudio.pause();
+                    kioskAudio.muted = false;
+                    kioskAudio.currentTime = 0;
+                }).catch(function() {});
+            } catch (e) {}
+            document.removeEventListener('click', unlockKioskAudio);
+            document.removeEventListener('touchstart', unlockKioskAudio);
+        }
+        document.addEventListener('click', unlockKioskAudio);
+        document.addEventListener('touchstart', unlockKioskAudio);
+
+        // Fallback Web Audio Synthesizer Chime
+        function playFallbackChime() {
+            try {
+                var AC = window.AudioContext || window.webkitAudioContext;
+                if (!AC) return;
+                var ctx = window.__globalAudioCtx || new AC();
+                window.__globalAudioCtx = ctx;
+                if (ctx.state === 'suspended') ctx.resume();
+                var osc = ctx.createOscillator();
+                var gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+                osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.15); // A5
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.6);
+            } catch (e) {}
+        }
+
+        function updateAudioPlaybackUI(statusText, isPlaying) {
+            var statusPill = document.getElementById('audio-playback-status');
+            if (statusPill) {
+                statusPill.textContent = statusText;
+                if (isPlaying) {
+                    statusPill.style.color = '#ffb74d';
+                    statusPill.style.borderColor = 'rgba(255, 183, 77, 0.5)';
+                    statusPill.style.background = 'rgba(255, 152, 0, 0.2)';
+                } else {
+                    statusPill.style.color = '#81c784';
+                    statusPill.style.borderColor = 'rgba(76, 175, 80, 0.3)';
+                    statusPill.style.background = 'rgba(76, 175, 80, 0.2)';
+                }
+            }
+        }
+
+        function stopKioskAudio() {
+            try {
+                if (window.AndroidAudio && typeof window.AndroidAudio.stopAudio === 'function') {
+                    window.AndroidAudio.stopAudio();
+                }
+            } catch (e) {}
+            try {
+                kioskAudio.pause();
+                kioskAudio.currentTime = 0;
+            } catch (e) {}
+            if (currentActivePlayBtn) {
+                currentActivePlayBtn.classList.remove('playing');
+                currentActivePlayBtn = null;
+            }
+            updateAudioPlaybackUI('● Audio Idle / Stopped', false);
+        }
+
+        function playKioskAudio(src, trackName, btnEl) {
+            stopKioskAudio();
+            var cleanPath = src || '';
+            if (!cleanPath.startsWith('http') && !cleanPath.startsWith('/') && !cleanPath.startsWith('azan/')) {
+                cleanPath = 'azan/' + cleanPath;
+            }
+            var vol = Math.max(0, Math.min(1, currentAzanVolume / 100));
+
+            if (btnEl) {
+                btnEl.classList.add('playing');
+                currentActivePlayBtn = btnEl;
+            }
+            updateAudioPlaybackUI('▶ Playing: ' + trackName, true);
+
+            // Tier 1: Native Android Hardware Bridge
+            if (window.AndroidAudio && typeof window.AndroidAudio.playAudio === 'function') {
+                try {
+                    if (typeof window.AndroidAudio.setVolume === 'function') {
+                        window.AndroidAudio.setVolume(vol);
+                    }
+                    window.AndroidAudio.playAudio(cleanPath);
+                    console.log("[Audio] Played via native AndroidAudio bridge:", cleanPath);
+                    return;
+                } catch (e) {
+                    console.warn("Native bridge play error:", e);
+                }
+            }
+
+            // Tier 2: HTML5 Audio with Blob URL and Web Audio API fallback
+            try {
+                kioskAudio.src = cleanPath;
+                kioskAudio.volume = vol;
+                var playPromise = kioskAudio.play();
+                if (playPromise && typeof playPromise.catch === 'function') {
+                    playPromise.catch(function(err) {
+                        console.warn("Direct HTML5 audio play failed, trying Blob fetch:", err);
+                        fetch(cleanPath)
+                            .then(function(res) {
+                                if (!res.ok) throw new Error("Fetch error: " + res.status);
+                                return res.blob();
+                            })
+                            .then(function(blob) {
+                                var blobUrl = URL.createObjectURL(blob);
+                                kioskAudio.src = blobUrl;
+                                kioskAudio.volume = vol;
+                                return kioskAudio.play();
+                            })
+                            .catch(function(fetchErr) {
+                                console.warn("Blob audio also failed:", fetchErr);
+                                playFallbackChime();
+                                updateAudioPlaybackUI('⚠️ Audio blocked - tap anywhere to enable: ' + trackName, false);
+                                if (btnEl) btnEl.classList.remove('playing');
+                            });
+                    });
+                }
+            } catch (e) {
+                console.warn("Audio exception:", e);
+                playFallbackChime();
+            }
+        }
+
+        kioskAudio.onended = function() {
+            if (currentActivePlayBtn) {
+                currentActivePlayBtn.classList.remove('playing');
+                currentActivePlayBtn = null;
+            }
+            updateAudioPlaybackUI('✓ Audio Track Finished', false);
+        };
+
+        kioskAudio.onerror = function() {
+            if (currentActivePlayBtn) {
+                currentActivePlayBtn.classList.remove('playing');
+                currentActivePlayBtn = null;
+            }
+            playFallbackChime();
+            updateAudioPlaybackUI('⚠️ Error loading file (played chime alert)', false);
+        };
+
+        // Apply saved settings (city, theme, layout, audio, etc.) on startup
+        try {
+            var savedStr = localStorage.getItem('settings');
+            if (savedStr) {
+                var sObj = JSON.parse(savedStr);
+                if (sObj) {
+                    if (sObj.city) {
+                        var cityEl = document.getElementById('current-city');
+                        if (cityEl) cityEl.textContent = sObj.city;
+                    }
+                    if (sObj.theme) {
+                        applyThemeToDOM(sObj.theme);
+                    }
+                    if (sObj.layout) {
+                        applyLayoutToDOM(sObj.layout);
+                    }
+                    if (typeof sObj.azanAudioEnabled !== 'undefined') {
+                        currentAzanEnabled = (sObj.azanAudioEnabled !== false);
+                    }
+                    if (typeof sObj.azanVolume !== 'undefined') {
+                        currentAzanVolume = parseInt(sObj.azanVolume, 10);
+                    }
+                }
+            }
+        } catch (e) {}
+
+        // Check if cached timings exist in localStorage
+        try {
+            var nowD = new Date();
+            var dayK = nowD.getFullYear() + '-' + ((nowD.getMonth() + 1) < 10 ? '0' : '') + (nowD.getMonth() + 1) + '-' + (nowD.getDate() < 10 ? '0' : '') + nowD.getDate();
+            var cached30 = localStorage.getItem('prayerTimes30Days');
+            if (cached30) {
+                var p30 = JSON.parse(cached30);
+                if (p30 && p30[dayK] && p30[dayK].timings) {
+                    curTimings = p30[dayK].timings;
+                }
+            }
+        } catch (e) {}
+
+        applyTimingsToUI(curTimings);
+
+        // Fired alarms minute tracker to avoid multi-triggers within the same minute
+        var firedAlarmsMap = {};
+        var lastSyncedAlarmsHash = '';
+
+        var alarmDismissTimer = null;
+
+        function showAlarmBannerNotification(title, timeStr) {
+            var banner = document.getElementById('alarm-alert-banner');
+            var titleEl = document.getElementById('alarm-banner-title');
+            var subEl = document.getElementById('alarm-banner-subtitle');
+            if (banner) {
+                if (titleEl) titleEl.textContent = '⏰ ALARM: ' + (title || 'Reminder').toUpperCase();
+                if (subEl) subEl.textContent = 'Scheduled Alert at ' + (timeStr || '') + ' - Auto-dismisses in 10s';
+                banner.style.display = 'flex';
+
+                // Automatically cancel and hide the popup after 10 seconds
+                if (alarmDismissTimer) {
+                    clearTimeout(alarmDismissTimer);
+                }
+                alarmDismissTimer = setTimeout(function() {
+                    window.__dismissActiveAlarm();
+                }, 10000);
+            }
+        }
+
+        window.__dismissActiveAlarm = function() {
+            if (alarmDismissTimer) {
+                clearTimeout(alarmDismissTimer);
+                alarmDismissTimer = null;
+            }
+            stopKioskAudio();
+            var banner = document.getElementById('alarm-alert-banner');
+            if (banner) banner.style.display = 'none';
+        };
+
+        // Core Audio & Prayer Manager
+        function checkAudioAndPrayers(now, currentSec, isMakruh) {
+            // 1. Midnight Reset (00:00:00 - 00:00:02)
+            if (now.getHours() === 0 && now.getMinutes() === 0 && now.getSeconds() <= 2) {
+                playedAzansToday = { Fajr: false, Dhuhr: false, Asr: false, Maghrib: false, Isha: false };
+                lastMakruhState = false;
+                firedAlarmsMap = {};
+            }
+
+            // 2. Makruh State Transition Warning Buzzer
+            if (isMakruh && !lastMakruhState) {
+                console.log("[Audio Engine] Entered Makruh period! Playing warning buzzer (azan/buzzer.mp3)...");
+                playKioskAudio('azan/buzzer.mp3', 'Makruh Warning Buzzer');
+            }
+            lastMakruhState = isMakruh;
+
+            // 3. Hourly Chime (Alhamd.mp3 at top of the hour)
+            var curHour = now.getHours();
+            if (curHour !== lastChimeHour && now.getMinutes() === 0 && now.getSeconds() <= 2) {
+                lastChimeHour = curHour;
+                if (!isMakruh && currentAzanEnabled !== false) {
+                    console.log("[Audio Engine] Top of hour " + curHour + ":00! Playing chime (azan/Alhamd.mp3)...");
+                    playKioskAudio('azan/Alhamd.mp3', 'Hourly Chime');
+                }
+            }
+
+            // 4. Automatic Prayer Azan Trigger
+            var prayerAudioMap = [
+                { name: 'Fajr', time: curTimings.Fajr, track: 'azan/fajr.mp3' },
+                { name: 'Dhuhr', time: curTimings.Dhuhr, track: 'azan/dhuhr.mp3' },
+                { name: 'Asr', time: curTimings.Asr, track: 'azan/asr.mp3' },
+                { name: 'Maghrib', time: curTimings.Maghrib, track: 'azan/maghrib.mp3' },
+                { name: 'Isha', time: curTimings.Isha, track: 'azan/isha.mp3' }
+            ];
+
+            for (var p = 0; p < prayerAudioMap.length; p++) {
+                var pObj = prayerAudioMap[p];
+                var pSec = timeToSeconds(pObj.time);
+                if (pSec !== -1) {
+                    // Pre-arm flag if we are earlier than prayer
+                    if (currentSec < pSec - 60) {
+                        playedAzansToday[pObj.name] = false;
+                    }
+                    var diff = currentSec - pSec;
+                    if (diff >= 0 && diff < 60 && !playedAzansToday[pObj.name]) {
+                        playedAzansToday[pObj.name] = true;
+                        if (currentAzanEnabled !== false) {
+                            console.log("[Audio Engine] Namaz time entered for " + pObj.name + "! Playing Azan: " + pObj.track);
+                            playKioskAudio(pObj.track, pObj.name + ' Azan');
+                        } else {
+                            console.log("[Audio Engine] Namaz time entered for " + pObj.name + " (Muted in settings).");
+                        }
+                    }
+                }
+            }
+
+            // 5. Scheduled Alarms & Recurrence Alerts (One-Time, Daily, Weekly, Monthly)
+            try {
+                var curH = now.getHours();
+                var curM = now.getMinutes();
+                var timeKey = (curH < 10 ? '0' : '') + curH + ':' + (curM < 10 ? '0' : '') + curM;
+                var curDayOfWeek = now.getDay(); // 0=Sun .. 6=Sat
+                var curDayOfMonth = now.getDate(); // 1 .. 31
+                var todayDateStr = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + curDayOfMonth;
+
+                var savedSettings = null;
+                try {
+                    var rawS = localStorage.getItem('settings');
+                    if (rawS) savedSettings = JSON.parse(rawS);
+                } catch (e) {}
+
+                if (savedSettings) {
+                    var alarmsList = [];
+                    if (Array.isArray(savedSettings.alarms) && savedSettings.alarms.length > 0) {
+                        alarmsList = savedSettings.alarms;
+                    } else if (Array.isArray(savedSettings.reminders) && savedSettings.reminders.length > 0) {
+                        alarmsList = savedSettings.reminders;
+                    }
+
+                    // Check legacy alarmTime
+                    if (savedSettings.alarmTime && savedSettings.alarmTime !== '00:00') {
+                        var existsInList = false;
+                        for (var ck = 0; ck < alarmsList.length; ck++) {
+                            if (alarmsList[ck].time === savedSettings.alarmTime) {
+                                existsInList = true; break;
+                            }
+                        }
+                        if (!existsInList) {
+                            alarmsList.push({
+                                id: 'legacy-alarm',
+                                name: 'Daily Alarm',
+                                time: savedSettings.alarmTime,
+                                audio: savedSettings.alarmAudio || 'azan/fajr.mp3',
+                                recurrence: 'daily',
+                                enabled: true
+                            });
+                        }
+                    }
+
+                    for (var al = 0; al < alarmsList.length; al++) {
+                        var alarm = alarmsList[al];
+                        if (!alarm || alarm.enabled === false) continue;
+                        if (!alarm.time) continue;
+
+                        // Check time match (HH:MM)
+                        if (alarm.time !== timeKey) continue;
+
+                        // Check recurrence match
+                        var rec = alarm.recurrence || (alarm.repeat ? 'daily' : 'once');
+                        var matchesRecurrence = false;
+
+                        if (rec === 'daily') {
+                            matchesRecurrence = true;
+                        } else if (rec === 'once') {
+                            matchesRecurrence = true;
+                        } else if (rec === 'weekly') {
+                            var selDays = Array.isArray(alarm.days) ? alarm.days : [0, 1, 2, 3, 4, 5, 6];
+                            if (selDays.indexOf(curDayOfWeek) !== -1) {
+                                matchesRecurrence = true;
+                            }
+                        } else if (rec === 'monthly') {
+                            var targetDom = parseInt(alarm.dayOfMonth, 10) || 1;
+                            if (targetDom === curDayOfMonth) {
+                                matchesRecurrence = true;
+                            }
+                        }
+
+                        if (!matchesRecurrence) continue;
+
+                        // Unique trigger key for this alarm on this date/minute
+                        var triggerKey = (alarm.id || ('al_' + al)) + '_' + todayDateStr + '_' + timeKey;
+                        if (!firedAlarmsMap[triggerKey]) {
+                            firedAlarmsMap[triggerKey] = true;
+                            console.log("[Alarm Engine] Scheduled alarm fired! Name: " + (alarm.name || 'Alarm') + ", Recurrence: " + rec + ", Audio: " + alarm.audio);
+                            playKioskAudio(alarm.audio || 'azan/fajr.mp3', (alarm.name || 'Alarm') + ' Alert');
+                            showAlarmBannerNotification(alarm.name || 'Alarm', alarm.time);
+
+                            // If One-Time alarm, automatically disable for subsequent days
+                            if (rec === 'once') {
+                                alarm.enabled = false;
+                                try {
+                                    localStorage.setItem('settings', JSON.stringify(savedSettings));
+                                } catch (e) {}
+                            }
+                        }
+                    }
+                }
+            } catch (errAl) {
+                console.warn("[Alarm Engine] Check warning:", errAl);
+            }
+        }
+
+        function tickKiosk() {
+            try {
+                var now = new Date();
+
+                // 1. Live Time (12-hour AM/PM with leading zero, matching reference image)
+                var timeElem = document.getElementById('current-time');
+                if (timeElem) {
+                    var curH = now.getHours();
+                    var curM = now.getMinutes();
+                    var curS = now.getSeconds();
+                    var curAmpm = curH >= 12 ? 'pm' : 'am';
+                    curH = curH % 12;
+                    if (curH === 0) curH = 12;
+                    timeElem.textContent = (curH < 10 ? '0' : '') + curH + ':' + (curM < 10 ? '0' : '') + curM + ':' + (curS < 10 ? '0' : '') + curS + ' ' + curAmpm;
+                }
+
+                // 2. Gregorian Date (English characters)
+                var gregElem = document.getElementById('gregorian-date');
+                if (gregElem) {
+                    var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    var gDay = now.getDate();
+                    gregElem.textContent = (gDay < 10 ? '0' : '') + gDay + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
+                }
+
+                // 3. Hijri Date (English characters & fonts)
+                var islamElem = document.getElementById('islamic-date');
+                if (islamElem) {
+                    islamElem.textContent = getHijriEnglishDate();
+                }
+
+                var currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+                // 4. Makruh Times calculation
+                var sunriseSec = timeToSeconds(curTimings.Sunrise);
+                var dhuhrSec = timeToSeconds(curTimings.Dhuhr);
+                var maghribSec = timeToSeconds(curTimings.Maghrib);
+                var isMakruh = false;
+                var makruhEndRemaining = 0;
+                var makruhType = '';
+
+                // Sunrise Makruh: from Sunrise until Sunrise + 15 min (900s)
+                if (sunriseSec !== -1 && currentSec >= sunriseSec && currentSec < (sunriseSec + 900)) {
+                    isMakruh = true;
+                    makruhEndRemaining = (sunriseSec + 900) - currentSec;
+                    makruhType = 'Sunrise';
+                }
+                // Zawal / Nisf an-Nahar Makruh: strictly ends at Dhuhr (never overlaps Dhuhr Azan)
+                else if (dhuhrSec !== -1 && currentSec >= (dhuhrSec - 600) && currentSec < dhuhrSec) {
+                    isMakruh = true;
+                    makruhEndRemaining = dhuhrSec - currentSec;
+                    makruhType = 'Zawal';
+                }
+                // Pre-Sunset / Ghuroob Makruh: strictly ends at Maghrib (never overlaps Maghrib Azan)
+                else if (maghribSec !== -1 && currentSec >= (maghribSec - 1200) && currentSec < maghribSec) {
+                    isMakruh = true;
+                    makruhEndRemaining = maghribSec - currentSec;
+                    makruhType = 'Pre-Sunset';
+                }
+
+                // Check and trigger prayer azan, Makruh buzzer, and hourly chime
+                checkAudioAndPrayers(now, currentSec, isMakruh);
+
+                // 5. Next Prayer Countdown & Box Highlighting
+                var prayers = [
+                    { name: 'Fajr', sec: timeToSeconds(curTimings.Fajr), id: 'fajr-box' },
+                    { name: 'Dhuhr', sec: timeToSeconds(curTimings.Dhuhr), id: 'dhuhr-box' },
+                    { name: 'Asr', sec: timeToSeconds(curTimings.Asr), id: 'asr-box' },
+                    { name: 'Maghrib', sec: timeToSeconds(curTimings.Maghrib), id: 'maghrib-box' },
+                    { name: 'Isha', sec: timeToSeconds(curTimings.Isha), id: 'isha-box' }
+                ];
+
+                var currentPrayer = prayers[prayers.length - 1]; // default Isha
+                var nextPrayer = null;
+
+                for (var i = 0; i < prayers.length; i++) {
+                    if (currentSec >= prayers[i].sec) {
+                        currentPrayer = prayers[i];
+                    }
+                    if (prayers[i].sec > currentSec && !nextPrayer) {
+                        nextPrayer = prayers[i];
+                    }
+                }
+
+                var nextDiff = 0;
+                if (nextPrayer) {
+                    nextDiff = nextPrayer.sec - currentSec;
+                } else {
+                    nextPrayer = prayers[0]; // Fajr tomorrow
+                    nextDiff = (prayers[0].sec + 86400) - currentSec;
+                }
+
+                var nextElem = document.getElementById('next-prayer');
+                if (nextElem && !nextElem.classList.contains('play-prompt')) {
+                    if (isMakruh) {
+                        var makruhHtml = '<span class="makruh-badge">⚠️ Makruh (' + makruhType + ') ends in ' + secondsToHHMM(makruhEndRemaining) + '</span>';
+                        if (nextElem.innerHTML !== makruhHtml) nextElem.innerHTML = makruhHtml;
+                    } else {
+                        var nextText = 'Next Prayer: ' + nextPrayer.name + ' in ' + secondsToHHMM(nextDiff);
+                        if (nextElem.textContent !== nextText) nextElem.textContent = nextText;
+                    }
+                }
+
+                // Highlight active prayer box or Makruh
+                var boxIds = ['fajr-box', 'dhuhr-box', 'asr-box', 'maghrib-box', 'isha-box'];
+                for (var b = 0; b < boxIds.length; b++) {
+                    var el = document.getElementById(boxIds[b]);
+                    if (el) {
+                        el.classList.remove('fajr-highlight', 'dhuhr-highlight', 'asr-highlight', 'maghrib-highlight', 'isha-highlight', 'makruh-highlight');
+                    }
+                }
+                if (currentPrayer) {
+                    var activeEl = document.getElementById(currentPrayer.id);
+                    if (activeEl) {
+                        if (isMakruh) {
+                            activeEl.classList.add('makruh-highlight');
+                        } else {
+                            activeEl.classList.add(currentPrayer.name.toLowerCase() + '-highlight');
+                        }
+                    }
+                }
+
+                // 6. Smooth Hadith & Holiday Rotation (20s Hadith, 10s Upcoming Holiday if any)
+                var titleEl = document.getElementById('hadith-title');
+                var hElem = document.getElementById('hadith-english');
+                var sElem = document.getElementById('hadith-source');
+                var hBox = document.getElementById('hadith-box');
+
+                var cycleSec = Math.floor(now.getTime() / 1000) % 30; // 30-second cycle
+                if (cycleSec >= 20 && upcomingHolidays.length > 0) {
+                    var holIdx = Math.floor(now.getTime() / 30000) % upcomingHolidays.length;
+                    var holText = upcomingHolidays[holIdx];
+                    if (hBox && !hBox.classList.contains('holiday-active')) hBox.classList.add('holiday-active');
+                    if (titleEl && titleEl.textContent !== 'HOLIDAY') titleEl.textContent = 'HOLIDAY';
+                    if (hElem && hElem.textContent !== holText) hElem.textContent = holText;
+                    if (sElem && sElem.textContent !== 'Upcoming Islamic Occasion') sElem.textContent = 'Upcoming Islamic Occasion';
+                } else {
+                    if (hBox && hBox.classList.contains('holiday-active')) hBox.classList.remove('holiday-active');
+                    if (titleEl && titleEl.textContent !== 'HADITH') titleEl.textContent = 'HADITH';
+                    var hadithIdx = Math.floor(now.getTime() / 20000) % curatedHadiths.length;
+                    var curH = curatedHadiths[hadithIdx];
+                    if (hElem && hElem.textContent !== curH.text) hElem.textContent = curH.text;
+                    if (sElem && sElem.textContent !== curH.source) sElem.textContent = curH.source;
+                }
+
+            } catch (err) {
+                console.warn("Kiosk tick warning:", err);
+            }
+        }
+
+        // Upcoming Holidays compilation (loaded from cached 30-day prayer data)
+        function extractUpcomingHolidays() {
+            try {
+                var cached = localStorage.getItem('prayerTimes30Days');
+                if (!cached) return [];
+                var map = JSON.parse(cached);
+                var holidays = [];
+                for (var k in map) {
+                    if (map.hasOwnProperty(k) && map[k] && map[k].holidays && map[k].holidays.length > 0) {
+                        for (var h = 0; h < map[k].holidays.length; h++) {
+                            holidays.push(map[k].holidays[h] + (map[k].readableDate ? ' on ' + map[k].readableDate : ''));
+                        }
+                    }
+                }
+                return holidays;
+            } catch (e) { return []; }
+        }
+        var upcomingHolidays = extractUpcomingHolidays();
+        window.__refreshKioskHolidays = function() {
+            upcomingHolidays = extractUpcomingHolidays();
+        };
+
+        tickKiosk();
+        setInterval(tickKiosk, 1000);
+        window.__kioskAudioEngineActive = true;
+        window.__kioskEngineActive = true;
+
+        // Expose helper to window so external script.js can update curTimings cleanly
+        window.__updateKioskTimings = function(newTimings) {
+            if (newTimings) {
+                curTimings = newTimings;
+                applyTimingsToUI(curTimings);
+                upcomingHolidays = extractUpcomingHolidays();
+                tickKiosk();
+            }
+        };
+
+        // --- Single Page Application (SPA) In-App Dynamic Settings Modal Controller ---
+        var modal = document.getElementById('settings-modal');
+        var openBtn = document.getElementById('open-settings-btn');
+        var closeBtn = document.getElementById('close-settings-btn');
+        var cancelBtn = document.getElementById('cancel-settings-btn');
+        var saveBtn = document.getElementById('save-settings-btn');
+        var saveStatus = document.getElementById('settings-save-status');
+
+        var currentSelectedAsr = 'hanafi';
+        var currentSelectedTheme = 'default';
+        var currentSelectedLayout = 'default';
+        var currentAzanEnabled = true;
+        var currentAzanVolume = 100;
+        var currentReminders = [];
+        var availableMp3Files = [
+            'fajr.mp3',
+            'dhuhr.mp3',
+            'asr.mp3',
+            'maghrib.mp3',
+            'isha.mp3',
+            'Alhamd.mp3',
+            'buzzer.mp3',
+            'Fajr Azan by Shaykh Ali Ahmed Mullah.mp3',
+            'Mufti Shahnawaz Ruqya.mp3'
+        ];
+
+        function updateAzanToggleUI() {
+            var toggleBtn = document.getElementById('btn-toggle-azan');
+            if (toggleBtn) {
+                if (currentAzanEnabled) {
+                    toggleBtn.textContent = '🔊 Azan: ON';
+                    toggleBtn.className = 'btn-primary';
+                    toggleBtn.style.background = '#15803d';
+                } else {
+                    toggleBtn.textContent = '🔇 Azan: OFF';
+                    toggleBtn.className = 'btn-secondary';
+                    toggleBtn.style.background = 'rgba(255, 255, 255, 0.15)';
+                }
+            }
+        }
+
+        // Fetch available MP3 files dynamically from /list_mp3.php
+        function fetchAvailableAudioTracks(callback) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/list_mp3.php', true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var list = JSON.parse(xhr.responseText);
+                            if (Array.isArray(list) && list.length > 0) {
+                                availableMp3Files = list;
+                            }
+                        } catch (e) {}
+                    }
+                    if (typeof callback === 'function') callback();
+                }
+            };
+            xhr.onerror = function() {
+                if (typeof callback === 'function') callback();
+            };
+            xhr.send();
+        }
+        window.fetchAvailableAudioTracks = fetchAvailableAudioTracks;
+
+        function populateAudioSelect(selectEl, selectedVal) {
+            if (!selectEl) return;
+            selectEl.innerHTML = '';
+            for (var i = 0; i < availableMp3Files.length; i++) {
+                var fileName = availableMp3Files[i];
+                var opt = document.createElement('option');
+                opt.value = 'azan/' + fileName;
+                opt.textContent = fileName;
+                if (selectedVal && (selectedVal === opt.value || selectedVal === fileName || selectedVal.indexOf(fileName) !== -1)) {
+                    opt.selected = true;
+                }
+                selectEl.appendChild(opt);
+            }
+        }
+
+        function renderRemindersUI() {
+            var container = document.getElementById('reminders-container-modal');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (!currentReminders || currentReminders.length === 0) {
+                container.innerHTML = '<div style="color: #64748b; font-size: 0.9rem; font-style: italic; padding: 12px 0; text-align: center;">No scheduled alarms set. Click "➕ Add New Alarm" above to create your first schedule.</div>';
+                return;
+            }
+
+            var dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+            for (var i = 0; i < currentReminders.length; i++) {
+                (function(idx) {
+                    var rem = currentReminders[idx] || {};
+                    if (!rem.id) rem.id = 'alarm_' + Date.now() + '_' + idx;
+                    if (!rem.name) rem.name = 'Alarm ' + (idx + 1);
+                    if (!rem.recurrence) rem.recurrence = rem.repeat ? 'daily' : 'daily';
+                    if (!Array.isArray(rem.days)) rem.days = [0, 1, 2, 3, 4, 5, 6];
+                    if (typeof rem.dayOfMonth === 'undefined') rem.dayOfMonth = 1;
+                    if (typeof rem.enabled === 'undefined') rem.enabled = true;
+
+                    var card = document.createElement('div');
+                    card.className = 'alarm-card-advanced';
+
+                    // Top Row: Enabled toggle, Name, Time, Recurrence, Delete
+                    var topRow = document.createElement('div');
+                    topRow.style.cssText = 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;';
+
+                    // Enabled toggle checkbox
+                    var enableLabel = document.createElement('label');
+                    enableLabel.style.cssText = 'display: inline-flex; align-items: center; gap: 5px; font-weight: 700; font-size: 0.85rem; color: #1e293b; cursor: pointer;';
+                    var enableCheck = document.createElement('input');
+                    enableCheck.type = 'checkbox';
+                    enableCheck.checked = Boolean(rem.enabled);
+                    enableCheck.onchange = function() {
+                        rem.enabled = this.checked;
+                    };
+                    enableLabel.appendChild(enableCheck);
+                    enableLabel.appendChild(document.createTextNode('Active'));
+
+                    // Name input
+                    var nameInput = document.createElement('input');
+                    nameInput.type = 'text';
+                    nameInput.className = 'settings-input';
+                    nameInput.style.cssText = 'flex: 1; min-width: 130px; font-weight: 600; padding: 6px 10px; font-size: 0.88rem;';
+                    nameInput.value = rem.name;
+                    nameInput.placeholder = 'Alarm Name / Label';
+                    nameInput.onchange = function() {
+                        rem.name = this.value;
+                    };
+
+                    // Time input
+                    var timeInput = document.createElement('input');
+                    timeInput.type = 'time';
+                    timeInput.className = 'settings-input';
+                    timeInput.style.cssText = 'width: 115px; font-weight: 800; padding: 6px 10px; font-size: 0.95rem;';
+                    timeInput.value = rem.time || '06:00';
+                    timeInput.onchange = function() {
+                        rem.time = this.value;
+                    };
+
+                    // Recurrence Selector
+                    var recSelect = document.createElement('select');
+                    recSelect.className = 'settings-select';
+                    recSelect.style.cssText = 'width: 155px; font-weight: 700; padding: 6px 10px; font-size: 0.85rem;';
+                    
+                    var optDaily = document.createElement('option');
+                    optDaily.value = 'daily';
+                    optDaily.textContent = '🔄 Daily';
+                    if (rem.recurrence === 'daily') optDaily.selected = true;
+
+                    var optWeekly = document.createElement('option');
+                    optWeekly.value = 'weekly';
+                    optWeekly.textContent = '📅 Weekly (Days)';
+                    if (rem.recurrence === 'weekly') optWeekly.selected = true;
+
+                    var optMonthly = document.createElement('option');
+                    optMonthly.value = 'monthly';
+                    optMonthly.textContent = '🗓️ Monthly (Date)';
+                    if (rem.recurrence === 'monthly') optMonthly.selected = true;
+
+                    var optOnce = document.createElement('option');
+                    optOnce.value = 'once';
+                    optOnce.textContent = '⏱️ One-Time';
+                    if (rem.recurrence === 'once') optOnce.selected = true;
+
+                    recSelect.appendChild(optDaily);
+                    recSelect.appendChild(optWeekly);
+                    recSelect.appendChild(optMonthly);
+                    recSelect.appendChild(optOnce);
+
+                    recSelect.onchange = function() {
+                        rem.recurrence = this.value;
+                        renderRemindersUI();
+                    };
+
+                    // Delete button
+                    var delBtn = document.createElement('button');
+                    delBtn.type = 'button';
+                    delBtn.style.cssText = 'background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; padding: 6px 10px; font-size: 0.85rem; cursor: pointer; font-weight: 700; margin-left: auto;';
+                    delBtn.textContent = '🗑️ Delete';
+                    delBtn.onclick = function() {
+                        currentReminders.splice(idx, 1);
+                        renderRemindersUI();
+                    };
+
+                    topRow.appendChild(enableLabel);
+                    topRow.appendChild(nameInput);
+                    topRow.appendChild(timeInput);
+                    topRow.appendChild(recSelect);
+                    topRow.appendChild(delBtn);
+
+                    // Second Row: Audio Selector & Test Play Button
+                    var secondRow = document.createElement('div');
+                    secondRow.style.cssText = 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px;';
+
+                    var audioSelect = document.createElement('select');
+                    audioSelect.className = 'settings-select';
+                    audioSelect.style.cssText = 'flex: 1; min-width: 170px; padding: 6px 10px; font-size: 0.85rem; font-weight: 600;';
+                    populateAudioSelect(audioSelect, rem.audio || 'azan/fajr.mp3');
+                    audioSelect.onchange = function() {
+                        rem.audio = this.value;
+                    };
+
+                    var testBtn = document.createElement('button');
+                    testBtn.type = 'button';
+                    testBtn.className = 'btn-secondary';
+                    testBtn.style.cssText = 'padding: 6px 14px; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;';
+                    testBtn.textContent = '▶ Test';
+                    testBtn.onclick = function() {
+                        playKioskAudio(rem.audio || 'azan/fajr.mp3', rem.name || 'Alarm Test');
+                    };
+
+                    secondRow.appendChild(audioSelect);
+                    secondRow.appendChild(testBtn);
+
+                    // Recurrence Conditional Controls:
+                    // Weekly Day Pills
+                    if (rem.recurrence === 'weekly') {
+                        var daysRow = document.createElement('div');
+                        daysRow.style.cssText = 'margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e2e8f0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;';
+                        var daysLabel = document.createElement('span');
+                        daysLabel.style.cssText = 'font-size: 0.8rem; font-weight: 700; color: #475569;';
+                        daysLabel.textContent = 'Days to ring:';
+                        daysRow.appendChild(daysLabel);
+
+                        var pillsWrap = document.createElement('div');
+                        pillsWrap.className = 'alarm-days-group';
+
+                        for (var d = 0; d < 7; d++) {
+                            (function(dayNum) {
+                                var dayBtn = document.createElement('button');
+                                dayBtn.type = 'button';
+                                dayBtn.className = 'day-pill-btn' + (rem.days.indexOf(dayNum) !== -1 ? ' active' : '');
+                                dayBtn.textContent = dayNames[dayNum];
+                                dayBtn.onclick = function() {
+                                    var dayIdx = rem.days.indexOf(dayNum);
+                                    if (dayIdx !== -1) {
+                                        if (rem.days.length > 1) { // keep at least 1 day
+                                            rem.days.splice(dayIdx, 1);
+                                            dayBtn.classList.remove('active');
+                                        }
+                                    } else {
+                                        rem.days.push(dayNum);
+                                        dayBtn.classList.add('active');
+                                    }
+                                };
+                                pillsWrap.appendChild(dayBtn);
+                            })(d);
+                        }
+                        daysRow.appendChild(pillsWrap);
+                        secondRow.appendChild(daysRow);
+                    } else if (rem.recurrence === 'monthly') {
+                        var monthRow = document.createElement('div');
+                        monthRow.style.cssText = 'margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e2e8f0; display: flex; align-items: center; gap: 8px;';
+                        var mLabel = document.createElement('span');
+                        mLabel.style.cssText = 'font-size: 0.8rem; font-weight: 700; color: #475569;';
+                        mLabel.textContent = 'Day of Month:';
+
+                        var domInput = document.createElement('input');
+                        domInput.type = 'number';
+                        domInput.min = '1';
+                        domInput.max = '31';
+                        domInput.className = 'settings-input';
+                        domInput.style.cssText = 'width: 70px; font-weight: 800; padding: 4px 8px; font-size: 0.9rem; text-align: center;';
+                        domInput.value = rem.dayOfMonth || 1;
+                        domInput.onchange = function() {
+                            rem.dayOfMonth = Math.max(1, Math.min(31, parseInt(this.value, 10) || 1));
+                        };
+
+                        var mNote = document.createElement('span');
+                        mNote.style.cssText = 'font-size: 0.8rem; color: #64748b;';
+                        mNote.textContent = '(Rings on this calendar date every month)';
+
+                        monthRow.appendChild(mLabel);
+                        monthRow.appendChild(domInput);
+                        monthRow.appendChild(mNote);
+                        secondRow.appendChild(monthRow);
+                    }
+
+                    card.appendChild(topRow);
+                    card.appendChild(secondRow);
+                    container.appendChild(card);
+                })(i);
+            }
+        }
+
+        // Custom MP3 Audio Upload Handler in Settings Modal
+        var modalAudioUploadInput = document.getElementById('modal-audio-file-input');
+        var btnModalUploadAudio = document.getElementById('btn-modal-upload-audio');
+        var modalUploadStatus = document.getElementById('modal-upload-status');
+
+        if (btnModalUploadAudio && modalAudioUploadInput) {
+            btnModalUploadAudio.onclick = function() {
+                modalAudioUploadInput.click();
+            };
+
+            modalAudioUploadInput.onchange = function() {
+                var file = this.files && this.files[0];
+                if (!file) return;
+
+                if (modalUploadStatus) {
+                    modalUploadStatus.style.display = 'block';
+                    modalUploadStatus.style.background = '#e0f2fe';
+                    modalUploadStatus.style.color = '#0284c7';
+                    modalUploadStatus.textContent = '⏳ Uploading ' + file.name + '...';
+                }
+
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var base64Data = e.target.result;
+                    var cleanFileName = file.name.replace(/[^a-zA-Z0-9_\-\. ]/g, '_');
+                    if (!cleanFileName.toLowerCase().endsWith('.mp3')) cleanFileName += '.mp3';
+
+                    // Save directly to Android internal storage if in Android Kiosk app
+                    if (window.AndroidAudio && typeof window.AndroidAudio.saveCustomAudio === 'function') {
+                        try {
+                            window.AndroidAudio.saveCustomAudio(cleanFileName, base64Data);
+                        } catch (ae) {
+                            console.warn("Android native save audio:", ae);
+                        }
+                    }
+
+                    // Upload via server endpoint
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/upload_audio.php', true);
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState === 4) {
+                            if (xhr.status === 200) {
+                                try {
+                                    var res = JSON.parse(xhr.responseText);
+                                    if (res && res.status === 'success') {
+                                        if (modalUploadStatus) {
+                                            modalUploadStatus.style.background = '#dcfce7';
+                                            modalUploadStatus.style.color = '#15803d';
+                                            modalUploadStatus.textContent = '✓ Successfully uploaded "' + res.fileName + '"!';
+                                            setTimeout(function() {
+                                                if (modalUploadStatus) modalUploadStatus.style.display = 'none';
+                                            }, 4000);
+                                        }
+
+                                        fetchAvailableAudioTracks(function() {
+                                            if (!Array.isArray(currentReminders)) currentReminders = [];
+                                            currentReminders.unshift({
+                                                id: 'alarm_' + Date.now(),
+                                                name: cleanFileName.replace('.mp3', ''),
+                                                time: '06:00',
+                                                audio: 'azan/' + res.fileName,
+                                                recurrence: 'daily',
+                                                days: [0, 1, 2, 3, 4, 5, 6],
+                                                dayOfMonth: 1,
+                                                enabled: true
+                                            });
+                                            renderRemindersUI();
+                                            playKioskAudio('azan/' + res.fileName, 'Uploaded Preview');
+                                        });
+                                        return;
+                                    }
+                                } catch (pe) {}
+                            }
+                            if (modalUploadStatus) {
+                                modalUploadStatus.style.background = '#fee2e2';
+                                modalUploadStatus.style.color = '#b91c1c';
+                                modalUploadStatus.textContent = '⚠️ Upload failed. Please verify format/network.';
+                            }
+                        }
+                    };
+                    xhr.onerror = function() {
+                        if (modalUploadStatus) {
+                            modalUploadStatus.style.background = '#fee2e2';
+                            modalUploadStatus.style.color = '#b91c1c';
+                            modalUploadStatus.textContent = '⚠️ Network error during upload.';
+                        }
+                    };
+                    xhr.send(JSON.stringify({
+                        fileName: cleanFileName,
+                        base64: base64Data
+                    }));
+                };
+                reader.readAsDataURL(file);
+            };
+        }
+
+        var addReminderBtn = document.getElementById('btn-add-reminder');
+        if (addReminderBtn) {
+            addReminderBtn.onclick = function() {
+                if (!Array.isArray(currentReminders)) currentReminders = [];
+                currentReminders.push({
+                    id: 'alarm_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                    name: 'Reminder ' + (currentReminders.length + 1),
+                    time: '06:00',
+                    audio: 'azan/' + (availableMp3Files[0] || 'fajr.mp3'),
+                    recurrence: 'daily',
+                    days: [0, 1, 2, 3, 4, 5, 6],
+                    dayOfMonth: 1,
+                    enabled: true
+                });
+                renderRemindersUI();
+            };
+        }
+
+        function setThemeActive(thm) {
+            if (!thm) thm = 'default';
+            currentSelectedTheme = thm;
+            var themeCards = document.querySelectorAll('.theme-card-item');
+            for (var i = 0; i < themeCards.length; i++) {
+                if (themeCards[i].getAttribute('data-theme') === thm) {
+                    themeCards[i].classList.add('active');
+                } else {
+                    themeCards[i].classList.remove('active');
+                }
+            }
+            applyThemeToDOM(thm);
+        }
+
+        function setLayoutActive(lay) {
+            if (!lay) lay = 'default';
+            currentSelectedLayout = lay;
+            var layoutCards = document.querySelectorAll('.layout-card-item');
+            for (var i = 0; i < layoutCards.length; i++) {
+                if (layoutCards[i].getAttribute('data-layout') === lay) {
+                    layoutCards[i].classList.add('active');
+                } else {
+                    layoutCards[i].classList.remove('active');
+                }
+            }
+            applyLayoutToDOM(lay);
+        }
+
+        function setAsrActive(method) {
+            var hanafiBtn = document.getElementById('btn-asr-hanafi');
+            var shafiBtn = document.getElementById('btn-asr-shafi');
+            if (hanafiBtn && shafiBtn) {
+                if (method === 'hanafi') {
+                    hanafiBtn.classList.add('active');
+                    shafiBtn.classList.remove('active');
+                } else {
+                    shafiBtn.classList.add('active');
+                    hanafiBtn.classList.remove('active');
+                }
+            }
+            currentSelectedAsr = method;
+        }
+
+        function loadModalFieldsFromSettings() {
+            try {
+                var s = localStorage.getItem('settings');
+                var parsed = s ? JSON.parse(s) : {};
+                
+                var cityInput = document.getElementById('setting-city');
+                var stateInput = document.getElementById('setting-state');
+                var countryInput = document.getElementById('setting-country');
+                var calcSelect = document.getElementById('setting-calc-method');
+                var hijriSelect = document.getElementById('setting-hijri-adj');
+                var volumeInput = document.getElementById('setting-azan-volume');
+                var volumeLabel = document.getElementById('volume-label');
+                var alarmTimeInput = document.getElementById('setting-alarm-time');
+                var alarmAudioSelect = document.getElementById('setting-alarm-audio');
+
+                if (cityInput) cityInput.value = parsed.city || 'Mumbai';
+                if (stateInput) stateInput.value = parsed.state || '';
+                if (countryInput) countryInput.value = parsed.country || 'India';
+                if (calcSelect) calcSelect.value = parsed.calcMethod || '2';
+                if (hijriSelect) hijriSelect.value = (typeof parsed.adjustment !== 'undefined') ? String(parsed.adjustment) : '0';
+
+                if (alarmTimeInput) alarmTimeInput.value = parsed.alarmTime || '00:00';
+                populateAudioSelect(alarmAudioSelect, parsed.alarmAudio || 'azan/fajr.mp3');
+
+                currentReminders = Array.isArray(parsed.reminders) ? parsed.reminders.slice() : [];
+                renderRemindersUI();
+
+                currentSelectedAsr = parsed.asrMethod || 'hanafi';
+                setAsrActive(currentSelectedAsr);
+
+                currentSelectedTheme = parsed.theme || 'default';
+                setThemeActive(currentSelectedTheme);
+
+                currentSelectedLayout = parsed.layout || 'default';
+                setLayoutActive(currentSelectedLayout);
+
+                if (typeof parsed.azanAudioEnabled !== 'undefined') {
+                    currentAzanEnabled = Boolean(parsed.azanAudioEnabled);
+                } else {
+                    currentAzanEnabled = true;
+                }
+                updateAzanToggleUI();
+
+                if (typeof parsed.azanVolume !== 'undefined') {
+                    currentAzanVolume = parseInt(parsed.azanVolume, 10);
+                } else {
+                    currentAzanVolume = 100;
+                }
+                if (volumeInput) volumeInput.value = currentAzanVolume;
+                if (volumeLabel) volumeLabel.textContent = currentAzanVolume + '%';
+
+                var pinInput = document.getElementById('setting-admin-pin');
+                var pinBadge = document.getElementById('current-pin-badge');
+                var currentPin = parsed.adminPin || '1234';
+                if (pinInput) pinInput.value = currentPin;
+                if (pinBadge) pinBadge.textContent = currentPin;
+
+                var remoteUrlEl = document.getElementById('display-remote-url');
+                var remoteBtn = document.getElementById('btn-open-remote-admin');
+                var qrImg = document.getElementById('remote-qr-code-img');
+
+                function applyRemoteUrlToUI(url) {
+                    if (remoteUrlEl) remoteUrlEl.textContent = url;
+                    if (remoteBtn) remoteBtn.href = url;
+                    if (qrImg) {
+                        qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=' + encodeURIComponent(url);
+                    }
+                }
+
+                // 1. Android Native Wi-Fi URL (port 8080)
+                var resolvedUrl = '';
+                if (window.AndroidAudio && typeof window.AndroidAudio.getAdminUrl === 'function') {
+                    try {
+                        resolvedUrl = window.AndroidAudio.getAdminUrl();
+                    } catch(e) {}
+                }
+
+                if (resolvedUrl) {
+                    applyRemoteUrlToUI(resolvedUrl);
+                } else {
+                    // Default fallback
+                    var fallbackUrl = (window.location.origin || 'http://localhost:3000') + '/admin.html';
+                    applyRemoteUrlToUI(fallbackUrl);
+
+                    // 2. Query /get_network_info.php to get real LAN IP on Wi-Fi network
+                    try {
+                        var netXhr = new XMLHttpRequest();
+                        netXhr.open('GET', '/get_network_info.php?_t=' + Date.now(), true);
+                        netXhr.onreadystatechange = function() {
+                            if (netXhr.readyState === 4 && netXhr.status === 200) {
+                                try {
+                                    var netInfo = JSON.parse(netXhr.responseText);
+                                    if (netInfo && netInfo.adminUrl) {
+                                        applyRemoteUrlToUI(netInfo.adminUrl);
+                                    }
+                                } catch(e) {}
+                            }
+                        };
+                        netXhr.send();
+                    } catch(e) {}
+                }
+
+            } catch (e) {
+                console.warn("Load modal fields warning:", e);
+            }
+        }
+
+        // Initialize audio tracks from list_mp3.php
+        fetchAvailableAudioTracks(function() {
+            var alarmAudioSelect = document.getElementById('setting-alarm-audio');
+            if (alarmAudioSelect) populateAudioSelect(alarmAudioSelect, 'azan/fajr.mp3');
+        });
+
+        if (openBtn) {
+            openBtn.onclick = function() {
+                fetchAvailableAudioTracks(function() {
+                    loadModalFieldsFromSettings();
+                });
+                if (modal) modal.classList.add('open');
+                var bodyEl = document.querySelector('.settings-modal-body');
+                if (bodyEl) bodyEl.scrollTop = 0;
+            };
+        }
+
+        function closeModal() {
+            if (modal) modal.classList.remove('open');
+            if (saveStatus) saveStatus.style.display = 'none';
+            stopKioskAudio();
+        }
+
+        window.copyRemoteUrlToClipboard = function() {
+            var urlEl = document.getElementById('display-remote-url');
+            var btn = document.getElementById('btn-copy-remote-url');
+            if (!urlEl) return;
+            var text = urlEl.textContent.trim();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    if (btn) {
+                        var orig = btn.innerHTML;
+                        btn.innerHTML = '✓ Copied to Clipboard!';
+                        setTimeout(function() { btn.innerHTML = orig; }, 2500);
+                    }
+                }).catch(function() { fallbackCopy(text, btn); });
+            } else {
+                fallbackCopy(text, btn);
+            }
+        };
+
+        function fallbackCopy(text, btn) {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                if (btn) {
+                    var orig = btn.innerHTML;
+                    btn.innerHTML = '✓ Copied to Clipboard!';
+                    setTimeout(function() { btn.innerHTML = orig; }, 2500);
+                }
+            } catch(e) {}
+            document.body.removeChild(ta);
+        }
+
+        if (closeBtn) closeBtn.onclick = closeModal;
+        if (cancelBtn) cancelBtn.onclick = closeModal;
+        if (modal) {
+            modal.onclick = function(e) {
+                if (e.target === modal) closeModal();
+            };
+        }
+
+        // Tab Switching
+        var tabBtns = document.querySelectorAll('.settings-tab-btn');
+        for (var t = 0; t < tabBtns.length; t++) {
+            tabBtns[t].onclick = function() {
+                for (var j = 0; j < tabBtns.length; j++) tabBtns[j].classList.remove('active');
+                this.classList.add('active');
+                var targetId = this.getAttribute('data-tab');
+                var contents = document.querySelectorAll('.settings-tab-content');
+                for (var c = 0; c < contents.length; c++) {
+                    contents[c].classList.remove('active');
+                    if (contents[c].id === targetId) contents[c].classList.add('active');
+                }
+                var bodyEl = document.querySelector('.settings-modal-body');
+                if (bodyEl) bodyEl.scrollTop = 0;
+            };
+        }
+
+        // Asr Toggle
+        var hanafiBtn = document.getElementById('btn-asr-hanafi');
+        var shafiBtn = document.getElementById('btn-asr-shafi');
+        if (hanafiBtn) hanafiBtn.onclick = function() { setAsrActive('hanafi'); };
+        if (shafiBtn) shafiBtn.onclick = function() { setAsrActive('shafi'); };
+
+        // Theme Toggle Buttons & Cards
+        var themeCards = document.querySelectorAll('.theme-card-item');
+        for (var th = 0; th < themeCards.length; th++) {
+            themeCards[th].onclick = function() {
+                var chosen = this.getAttribute('data-theme');
+                setThemeActive(chosen);
+            };
+        }
+
+        // Layout Toggle Cards
+        var layoutCards = document.querySelectorAll('.layout-card-item');
+        for (var ly = 0; ly < layoutCards.length; ly++) {
+            layoutCards[ly].onclick = function() {
+                var chosen = this.getAttribute('data-layout');
+                setLayoutActive(chosen);
+            };
+        }
+
+        // Azan Enable / Disable Master Toggle
+        var azanToggleBtn = document.getElementById('btn-toggle-azan');
+        if (azanToggleBtn) {
+            azanToggleBtn.onclick = function() {
+                currentAzanEnabled = !currentAzanEnabled;
+                updateAzanToggleUI();
+                if (!currentAzanEnabled) {
+                    stopKioskAudio();
+                }
+            };
+        }
+
+        // Volume Slider Input
+        var volumeInput = document.getElementById('setting-azan-volume');
+        var volumeLabel = document.getElementById('volume-label');
+        if (volumeInput) {
+            volumeInput.oninput = function() {
+                currentAzanVolume = parseInt(this.value, 10);
+                if (volumeLabel) volumeLabel.textContent = currentAzanVolume + '%';
+                if (kioskAudio) kioskAudio.volume = Math.max(0, Math.min(1, currentAzanVolume / 100));
+                if (window.AndroidAudio && typeof window.AndroidAudio.setVolume === 'function') {
+                    window.AndroidAudio.setVolume(currentAzanVolume / 100);
+                }
+            };
+        }
+
+        // Audio test buttons
+        var audioButtons = document.querySelectorAll('.audio-test-btn-admin, .audio-test-btn');
+        for (var ab = 0; ab < audioButtons.length; ab++) {
+            (function(btn) {
+                btn.onclick = function() {
+                    if (btn.id === 'btn-stop-audio') {
+                        stopKioskAudio();
+                        return;
+                    }
+                    var track = btn.getAttribute('data-track');
+                    var name = btn.getAttribute('data-name') || 'Audio';
+                    if (track) {
+                        playKioskAudio(track, name, btn);
+                    }
+                };
+            })(audioButtons[ab]);
+        }
+
+        // Sync Native Alarms with Android Hardware AlarmManager
+        function syncNativeAndroidAlarms(alarms) {
+            if (!window.AndroidAudio || typeof window.AndroidAudio.scheduleNativeAlarm !== 'function') return;
+            try {
+                if (Array.isArray(alarms)) {
+                    for (var i = 0; i < alarms.length; i++) {
+                        var a = alarms[i];
+                        if (a && a.enabled !== false && a.time) {
+                            var tp = a.time.split(':');
+                            var h = parseInt(tp[0], 10);
+                            var m = parseInt(tp[1], 10);
+                            if (a.recurrence === 'weekly' && Array.isArray(a.days)) {
+                                for (var wd = 0; wd < a.days.length; wd++) {
+                                    // Calendar.DAY_OF_WEEK: 1=Sun, 2=Mon... 7=Sat
+                                    window.AndroidAudio.scheduleNativeAlarm(a.id + '_d' + a.days[wd], h, m, a.days[wd] + 1, a.audio || 'azan/fajr.mp3', a.name || 'Alarm');
+                                }
+                            } else {
+                                window.AndroidAudio.scheduleNativeAlarm(a.id, h, m, 0, a.audio || 'azan/fajr.mp3', a.name || 'Alarm');
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("Sync native alarms warning:", e);
+            }
+        }
+
+        // Save & Apply Settings Dynamically (Zero Reload, Zero State Loss)
+        if (saveBtn) {
+            saveBtn.onclick = function() {
+                var cityVal = (document.getElementById('setting-city') || {}).value || 'Mumbai';
+                var stateVal = (document.getElementById('setting-state') || {}).value || '';
+                var countryVal = (document.getElementById('setting-country') || {}).value || 'India';
+                var calcVal = (document.getElementById('setting-calc-method') || {}).value || '2';
+                var hijriVal = (document.getElementById('setting-hijri-adj') || {}).value || '0';
+                var adminPinVal = ((document.getElementById('setting-admin-pin') || {}).value || '1234').trim();
+
+                var currentSettings = {};
+                try {
+                    var existing = localStorage.getItem('settings');
+                    if (existing) currentSettings = JSON.parse(existing);
+                } catch (e) {}
+
+                currentSettings.city = cityVal.trim();
+                currentSettings.state = stateVal.trim();
+                currentSettings.country = countryVal.trim();
+                currentSettings.calcMethod = calcVal;
+                currentSettings.asrMethod = currentSelectedAsr;
+                currentSettings.adjustment = hijriVal;
+                currentSettings.theme = currentSelectedTheme;
+                currentSettings.layout = currentSelectedLayout;
+                currentSettings.alarms = currentReminders;
+                currentSettings.reminders = currentReminders;
+                currentSettings.azanAudioEnabled = currentAzanEnabled;
+                currentSettings.azanVolume = currentAzanVolume;
+                currentSettings.adminPin = adminPinVal;
+
+                // Sync first alarm time to legacy alarmTime for backwards compatibility
+                if (currentReminders.length > 0) {
+                    currentSettings.alarmTime = currentReminders[0].time;
+                    currentSettings.alarmAudio = currentReminders[0].audio;
+                }
+
+                localStorage.setItem('settings', JSON.stringify(currentSettings));
+                localStorage.setItem('selectedTheme', currentSelectedTheme);
+                localStorage.setItem('selectedLayout', currentSelectedLayout);
+
+                // Hardware AlarmManager exact scheduling on Android
+                syncNativeAndroidAlarms(currentReminders);
+
+                // Sync with server-side settings.json
+                try {
+                    var xhrPost = new XMLHttpRequest();
+                    xhrPost.open('POST', '/save_settings.php', true);
+                    xhrPost.setRequestHeader('Content-Type', 'application/json');
+                    xhrPost.send(JSON.stringify(currentSettings));
+                } catch (e) {}
+
+                // 1. Update City on screen immediately
+                var cityEl = document.getElementById('current-city');
+                if (cityEl) cityEl.textContent = currentSettings.city;
+
+                // 2. Update Theme & Layout on screen immediately
+                applyThemeToDOM(currentSettings.theme);
+                applyLayoutToDOM(currentSettings.layout);
+
+                // 3. Update English Hijri date immediately
+                var islamElem = document.getElementById('islamic-date');
+                if (islamElem) {
+                    islamElem.textContent = getHijriEnglishDate(currentSettings.adjustment);
+                }
+
+                // 4. If online, fetch fresh timings from Aladhan API for new city in background
+                if (navigator.onLine) {
+                    try {
+                        var schoolCode = currentSelectedAsr === 'hanafi' ? 1 : 0;
+                        var apiUrl = 'https://api.aladhan.com/v1/timingsByCity?city=' + encodeURIComponent(currentSettings.city) +
+                            '&country=' + encodeURIComponent(currentSettings.country) +
+                            '&state=' + encodeURIComponent(currentSettings.state) +
+                            '&method=' + currentSettings.calcMethod +
+                            '&school=' + schoolCode +
+                            '&adjustment=' + currentSettings.adjustment;
+                        
+                        var xhr = new XMLHttpRequest();
+                        xhr.open('GET', apiUrl, true);
+                        xhr.onreadystatechange = function() {
+                            if (xhr.readyState === 4 && xhr.status === 200) {
+                                try {
+                                    var res = JSON.parse(xhr.responseText);
+                                    if (res && res.data && res.data.timings) {
+                                        window.__updateKioskTimings(res.data.timings);
+                                        // Cache to localStorage
+                                        var nowD = new Date();
+                                        var dayK = nowD.getFullYear() + '-' + ((nowD.getMonth() + 1) < 10 ? '0' : '') + (nowD.getMonth() + 1) + '-' + (nowD.getDate() < 10 ? '0' : '') + nowD.getDate();
+                                        var cachedMap = {};
+                                        try {
+                                            var exist = localStorage.getItem('prayerTimes30Days');
+                                            if (exist) cachedMap = JSON.parse(exist);
+                                        } catch (e) {}
+                                        cachedMap[dayK] = {
+                                            timings: res.data.timings,
+                                            readableDate: res.data.date ? res.data.date.readable : '',
+                                            hijriDate: res.data.date && res.data.date.hijri ? (res.data.date.hijri.day + ' ' + res.data.date.hijri.month.en + ' ' + res.data.date.hijri.year) : ''
+                                        };
+                                        localStorage.setItem('prayerTimes30Days', JSON.stringify(cachedMap));
+                                    }
+                                } catch (e) {}
+                            }
+                        };
+                        xhr.send();
+                    } catch (e) {}
+                }
+
+                if (saveStatus) {
+                    saveStatus.style.display = 'inline-block';
+                }
+
+                setTimeout(function() {
+                    closeModal();
+                }, 600);
+            };
+        }
+
+        // Live Network Polling for Remote Settings Changes (from admin.html on another phone/device)
+        var lastRemotePollHash = '';
+        function pollRemoteSettingsFromNetwork() {
+            // 1. Check Android native bridge directly (zero latency)
+            if (window.AndroidAudio && typeof window.AndroidAudio.getLatestSettingsJson === 'function') {
+                try {
+                    var nativeJson = window.AndroidAudio.getLatestSettingsJson();
+                    if (nativeJson && nativeJson.length > 2) {
+                        if (lastRemotePollHash && lastRemotePollHash !== nativeJson) {
+                            lastRemotePollHash = nativeJson;
+                            var obj = JSON.parse(nativeJson);
+                            applyRemoteSettings(obj);
+                        } else if (!lastRemotePollHash) {
+                            lastRemotePollHash = nativeJson;
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            // 2. Poll HTTP endpoint (works in both Web Preview and Android local network server)
+            try {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', '/save_settings.php?_t=' + Date.now(), true);
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        try {
+                            var remoteObj = JSON.parse(xhr.responseText);
+                            if (remoteObj && typeof remoteObj === 'object') {
+                                var remoteStr = JSON.stringify(remoteObj);
+                                if (lastRemotePollHash && lastRemotePollHash !== remoteStr) {
+                                    console.log("[Remote Sync] Remote settings change detected via HTTP!");
+                                    lastRemotePollHash = remoteStr;
+                                    applyRemoteSettings(remoteObj);
+                                } else if (!lastRemotePollHash) {
+                                    lastRemotePollHash = remoteStr;
+                                }
+                            }
+                        } catch (e) {}
+                    }
+                };
+                xhr.send();
+            } catch (e) {}
+        }
+        setInterval(pollRemoteSettingsFromNetwork, 1500);
+    })();
+    </script>
+    <script src="script.js"></script>
+</body>
+</html>
